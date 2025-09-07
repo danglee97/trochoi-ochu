@@ -9,12 +9,47 @@
     <!-- Tích hợp font chữ từ Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&family=Quicksand:wght@500;700&display=swap" rel="stylesheet">
     <!-- Thêm favicon -->
     <link rel="icon" href="favicon.png" type="image/png">
     <style>
+        :root {
+            /* Tông màu sáng hơn cho nền */
+            --background-start: #93c5fd; /* blue-300 */
+            --background-end: #a78bfa; /* purple-400 */
+            --primary-color: #6366f1; /* indigo-500 */
+            --secondary-color: #f59e0b; /* amber-500 */
+            --tertiary-color: #10b981; /* emerald-500 */
+        }
         body {
-            font-family: 'Montserrat', sans-serif;
+            font-family: 'Quicksand', sans-serif;
+            background: linear-gradient(135deg, var(--background-start), var(--background-end));
+            overflow: hidden; /* Ngăn cuộn trang do các hiệu ứng bay lên */
+        }
+        #particle-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+        }
+        .bubble {
+            position: absolute;
+            background-color: rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: floatUp linear infinite;
+        }
+        @keyframes floatUp {
+            from {
+                transform: translateY(100vh) scale(0);
+                opacity: 0.8;
+            }
+            to {
+                transform: translateY(-10vh) scale(1.2);
+                opacity: 0;
+            }
         }
         /* CSS tùy chỉnh cho hiệu ứng lật ô chữ 3D */
         .tile-container {
@@ -24,7 +59,7 @@
             position: relative;
             width: 100%;
             height: 100%;
-            transition: transform 0.6s;
+            transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-style: preserve-3d;
         }
         .tile-container.flipped .tile-inner {
@@ -40,21 +75,31 @@
             align-items: center;
             justify-content: center;
             border-radius: 0.5rem;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .tile-front {
-            background-color: #3b82f6; /* Màu xanh dương */
+            background: linear-gradient(45deg, var(--tertiary-color), #2dd4bf);
         }
         .tile-back {
-            background-color: #ffffff;
+            background-color: #f3f4f6;
             color: #1f2937;
             transform: rotateY(180deg);
         }
         /* CSS cho nút bàn phím đã được chọn */
         .keyboard-btn:disabled, .action-btn:disabled {
-            opacity: 0.5;
+            opacity: 0.6;
             cursor: not-allowed;
             transform: scale(0.95);
+        }
+        .keyboard-btn.guessed {
+            background: var(--tertiary-color);
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+        .keyboard-btn.incorrect {
+            background: #ef4444; /* red-500 */
+            color: #fff;
+            box-shadow: 0 4px 6px rgba(239, 68, 68, 0.3);
         }
         /* Hiệu ứng cho thông báo chiến thắng */
         .win-message {
@@ -83,14 +128,43 @@
             transform: scale(1.05);
             font-size: 1.1rem;
         }
+        /* Nút chung */
+        .action-btn {
+            background: linear-gradient(90deg, #6366f1, #8b5cf6);
+            color: white;
+            font-weight: bold;
+            padding: 12px 24px;
+            border-radius: 9999px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            transition: transform 0.3s, box-shadow 0.3s, background-color 0.3s;
+        }
+        .action-btn:hover {
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        .action-btn:focus {
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.5);
+        }
+        /* Điều chỉnh màu sắc riêng cho từng nút */
+        #toggle-all-button { background: linear-gradient(90deg, #10b981, #34d399); }
+        #toggle-all-button:focus { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.5); }
+        #reveal-button { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        #reveal-button:focus { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5); }
+        #reset-button { background: linear-gradient(90deg, #ef4444, #f87171); }
+        #reset-button:focus { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5); }
+        #modal-reset-button { background: linear-gradient(90deg, #10b981, #34d399); }
+        #modal-reset-button:focus { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.5); }
     </style>
 </head>
-<body class="bg-gradient-to-br from-sky-400 to-emerald-400 min-h-screen flex items-center justify-center p-2 sm:p-4">
+<body class="bg-gradient-to-br from-blue-300 to-purple-400 min-h-screen flex items-center justify-center p-2 sm:p-4">
+    <!-- Container cho các hạt bong bóng -->
+    <div id="particle-bg"></div>
 
-    <div id="game-container" class="w-full max-w-6xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-4 md:p-8 text-center">
+    <div id="game-container" class="w-full max-w-6xl mx-auto bg-white/70 backdrop-blur-md rounded-3xl border border-gray-300/50 shadow-xl p-4 md:p-8 text-center text-gray-800">
         <!-- Thêm logo -->
-        <img src="logo.png" alt="Logo Thiếu Nhi Vĩnh Long" class="mx-auto mb-4 w-24 h-auto">
-        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">TRÒ CHƠI ĐOÁN Ô CHỮ</h1>
+        <img src="logo.png" alt="Logo Thiếu Nhi Vĩnh Long" class="mx-auto mb-4 w-28 h-auto transform transition-transform hover:scale-105">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold font-['Montserrat'] mb-2 text-gray-800">TRÒ CHƠI ĐOÁN Ô CHỮ</h1>
         <p id="theme-text" class="text-gray-600 text-base mb-4 h-8 flex items-center justify-center">Chủ đề: (ẩn)</p>
         
         <!-- Khu vực thông báo số chữ cái tìm thấy -->
@@ -108,25 +182,25 @@
         
         <!-- Các nút điều khiển -->
         <div class="flex flex-wrap justify-center items-center gap-4">
-            <button id="toggle-all-button" class="action-btn bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
+            <button id="toggle-all-button" class="action-btn">
                 Hiện Tất Cả
             </button>
-            <button id="reveal-button" class="action-btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400">
+            <button id="reveal-button" class="action-btn">
                 Hiện Chủ Đề
             </button>
-            <button id="reset-button" class="action-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+            <button id="reset-button" class="action-btn">
                 Chơi Lại
             </button>
         </div>
 
 
         <!-- Màn hình thông báo chiến thắng (ẩn mặc định) -->
-        <div id="win-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
-            <div class="win-message bg-white rounded-xl p-8 text-center shadow-xl max-w-sm mx-auto">
+        <div id="win-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+            <div class="win-message bg-white/80 rounded-2xl p-8 text-center shadow-2xl max-w-sm mx-auto border border-gray-300/50">
                 <div class="text-6xl mb-4">🎉</div>
-                <h2 class="text-3xl md:text-4xl font-bold text-green-500 mb-4">XIN CHÚC MỪNG!</h2>
+                <h2 class="text-3xl md:text-4xl font-bold text-teal-500 mb-4">XIN CHÚC MỪNG!</h2>
                 <p class="text-lg text-gray-700 mb-6">Bạn đã giải thành công ô chữ!</p>
-                <button id="modal-reset-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-lg w-full">
+                <button id="modal-reset-button" class="action-btn w-full">
                     Chơi Lần Nữa
                 </button>
             </div>
@@ -150,6 +224,7 @@
             const notificationArea = document.getElementById('notification-area');
             const revealButton = document.getElementById('reveal-button');
             const toggleAllButton = document.getElementById('toggle-all-button');
+            const particleContainer = document.getElementById('particle-bg');
 
             // --- BIẾN TRẠNG THÁI TRÒ CHƠI ---
             let guessedLetters = new Set();
@@ -159,6 +234,20 @@
             let areAllTilesShown = false;
 
             // --- CÁC HÀM XỬ LÝ ---
+            function createParticles() {
+                const particleCount = 20;
+                for (let i = 0; i < particleCount; i++) {
+                    const bubble = document.createElement('div');
+                    bubble.className = 'bubble';
+                    const size = Math.random() * 20 + 10;
+                    bubble.style.width = `${size}px`;
+                    bubble.style.height = `${size}px`;
+                    bubble.style.left = `${Math.random() * 100}vw`;
+                    bubble.style.animationDuration = `${Math.random() * 5 + 5}s`;
+                    bubble.style.animationDelay = `${Math.random() * 2}s`;
+                    particleContainer.appendChild(bubble);
+                }
+            }
 
             function initializeGame() {
                 guessedLetters.clear();
@@ -222,7 +311,8 @@
                 keyboardContainer.innerHTML = '';
                 for (let letter of alphabet) {
                     const button = document.createElement('button');
-                    button.className = 'keyboard-btn w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-md text-base sm:text-lg transition-all duration-200';
+                    // Tăng độ tương phản của phím chữ cái
+                    button.className = 'keyboard-btn w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gray-400 hover:bg-gray-500 text-white font-semibold rounded-md text-base sm:text-lg transition-all duration-200';
                     button.textContent = letter;
                     button.dataset.letter = letter;
                     button.addEventListener('click', () => handleGuess(letter, button));
@@ -246,12 +336,13 @@
                     });
                 }
                 
-                button.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+                // Adjusted the class removal to reflect the new color scheme
+                button.classList.remove('bg-gray-400', 'hover:bg-gray-500');
                 if (isGuessCorrect) {
-                    button.classList.add('bg-green-500', 'text-white');
+                    button.classList.add('guessed');
                     showNotification(`Tìm thấy ${tiles.length} chữ "${letter}"!`);
                 } else {
-                    button.classList.add('bg-red-500', 'text-white');
+                    button.classList.add('incorrect');
                     showNotification(`Không có chữ "${letter}" nào trong ô chữ.`);
                 }
                 checkWinCondition();
@@ -293,6 +384,13 @@
             toggleAllButton.addEventListener('click', () => {
                 areAllTilesShown = !areAllTilesShown;
                 const allTiles = document.querySelectorAll('.tile-container');
+                
+                // Ẩn/hiện bàn phím
+                if (areAllTilesShown) {
+                    keyboardContainer.classList.add('hidden');
+                } else {
+                    keyboardContainer.classList.remove('hidden');
+                }
 
                 if (areAllTilesShown) {
                     allTiles.forEach(tile => tile.classList.add('flipped'));
@@ -312,6 +410,7 @@
 
             // --- BẮT ĐẦU TRÒ CHƠI ---
             initializeGame();
+            createParticles();
         });
     </script>
 </body>
