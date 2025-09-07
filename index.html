@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trò Chơi Đoán Ô Chữ - Thiếu Nhi Vĩnh Long</title>
+    <!-- Tích hợp Tailwind CSS để thiết kế giao diện -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tích hợp font chữ từ Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700&display=swap" rel="stylesheet">
+    <!-- Thêm favicon -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <style>
+        body {
+            font-family: 'Montserrat', sans-serif;
+        }
+        /* CSS tùy chỉnh cho hiệu ứng lật ô chữ 3D */
+        .tile-container {
+            perspective: 1000px;
+        }
+        .tile-inner {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s;
+            transform-style: preserve-3d;
+        }
+        .tile-container.flipped .tile-inner {
+            transform: rotateY(180deg);
+        }
+        .tile-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            -webkit-backface-visibility: hidden; /* Safari */
+            backface-visibility: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .tile-front {
+            background-color: #3b82f6; /* Màu xanh dương */
+        }
+        .tile-back {
+            background-color: #ffffff;
+            color: #1f2937;
+            transform: rotateY(180deg);
+        }
+        /* CSS cho nút bàn phím đã được chọn */
+        .keyboard-btn:disabled, .action-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: scale(0.95);
+        }
+        /* Hiệu ứng cho thông báo chiến thắng */
+        .win-message {
+            animation: fadeInScale 0.5s cubic-bezier(0.165, 0.840, 0.440, 1.000);
+        }
+        @keyframes fadeInScale {
+            from {
+                opacity: 0;
+                transform: scale(0.8);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+        #notification-area {
+            transition: opacity 0.5s ease-in-out;
+        }
+        /* CSS cho chủ đề khi được hiển thị */
+        #theme-text {
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #theme-text.revealed {
+            font-weight: 700;
+            color: #1e40af; /* blue-800 */
+            transform: scale(1.05);
+            font-size: 1.1rem;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-sky-400 to-emerald-400 min-h-screen flex items-center justify-center p-2 sm:p-4">
+
+    <div id="game-container" class="w-full max-w-6xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-4 md:p-8 text-center">
+        <!-- Thêm logo -->
+        <img src="logo.png" alt="Logo Thiếu Nhi Vĩnh Long" class="mx-auto mb-4 w-24 h-auto">
+        <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold text-gray-800 mb-2">TRÒ CHƠI ĐOÁN Ô CHỮ</h1>
+        <p id="theme-text" class="text-gray-600 text-base mb-4 h-8 flex items-center justify-center">Chủ đề: (ẩn)</p>
+        
+        <!-- Khu vực thông báo số chữ cái tìm thấy -->
+        <div id="notification-area" class="h-8 text-lg font-semibold text-blue-700 mb-4 opacity-0"></div>
+
+        <!-- Khu vực hiển thị các ô chữ -->
+        <div id="phrase-container" class="flex flex-wrap justify-center items-center gap-x-2 gap-y-3 mb-6 md:mb-8">
+            <!-- Các ô chữ sẽ được tạo bằng JavaScript -->
+        </div>
+
+        <!-- Bàn phím ảo -->
+        <div id="keyboard-container" class="flex flex-wrap justify-center gap-2 max-w-3xl mx-auto mb-6">
+            <!-- Các nút chữ cái sẽ được tạo bằng JavaScript -->
+        </div>
+        
+        <!-- Các nút điều khiển -->
+        <div class="flex flex-wrap justify-center items-center gap-4">
+            <button id="toggle-all-button" class="action-btn bg-teal-500 hover:bg-teal-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-400">
+                Hiện Tất Cả
+            </button>
+            <button id="reveal-button" class="action-btn bg-amber-500 hover:bg-amber-600 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-amber-400">
+                Hiện Chủ Đề
+            </button>
+            <button id="reset-button" class="action-btn bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition-transform transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+                Chơi Lại
+            </button>
+        </div>
+
+
+        <!-- Màn hình thông báo chiến thắng (ẩn mặc định) -->
+        <div id="win-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50 p-4">
+            <div class="win-message bg-white rounded-xl p-8 text-center shadow-xl max-w-sm mx-auto">
+                <div class="text-6xl mb-4">🎉</div>
+                <h2 class="text-3xl md:text-4xl font-bold text-green-500 mb-4">XIN CHÚC MỪNG!</h2>
+                <p class="text-lg text-gray-700 mb-6">Bạn đã giải thành công ô chữ!</p>
+                <button id="modal-reset-button" class="bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-lg text-lg w-full">
+                    Chơi Lần Nữa
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- CÀI ĐẶT TRÒ CHƠI ---
+            const phrase = "TRUONG HOC THAN THIEN HOC SINH TICH CUC";
+            const phraseWithAccents = "TRƯỜNG HỌC THÂN THIỆN HỌC SINH TÍCH CỰC";
+            const alphabet = 'ABCDEFGHIKLMNOPQRSTUVXY';
+            
+            // --- LẤY CÁC THÀNH PHẦN HTML ---
+            const phraseContainer = document.getElementById('phrase-container');
+            const keyboardContainer = document.getElementById('keyboard-container');
+            const resetButton = document.getElementById('reset-button');
+            const winModal = document.getElementById('win-modal');
+            const modalResetButton = document.getElementById('modal-reset-button');
+            const themeText = document.getElementById('theme-text');
+            const notificationArea = document.getElementById('notification-area');
+            const revealButton = document.getElementById('reveal-button');
+            const toggleAllButton = document.getElementById('toggle-all-button');
+
+            // --- BIẾN TRẠNG THÁI TRÒ CHƠI ---
+            let guessedLetters = new Set();
+            let totalLettersInPhrase = 0;
+            let correctGuesses = 0;
+            let notificationTimeout;
+            let areAllTilesShown = false;
+
+            // --- CÁC HÀM XỬ LÝ ---
+
+            function initializeGame() {
+                guessedLetters.clear();
+                correctGuesses = 0;
+                totalLettersInPhrase = phrase.replace(/\s/g, '').length;
+                
+                winModal.classList.add('hidden');
+                themeText.textContent = 'Chủ đề: (ẩn)';
+                themeText.classList.remove('revealed');
+                notificationArea.textContent = '';
+                notificationArea.style.opacity = 0;
+                
+                revealButton.disabled = false;
+                toggleAllButton.disabled = false;
+                toggleAllButton.textContent = 'Hiện Tất Cả';
+                areAllTilesShown = false;
+
+                createPhraseTiles();
+                createKeyboard();
+            }
+
+            function showNotification(message, duration = 2500) {
+                clearTimeout(notificationTimeout);
+                notificationArea.textContent = message;
+                notificationArea.style.opacity = 1;
+
+                notificationTimeout = setTimeout(() => {
+                    notificationArea.style.opacity = 0;
+                }, duration);
+            }
+
+            function createPhraseTiles() {
+                phraseContainer.innerHTML = '';
+                const words = phrase.split(' ');
+                
+                words.forEach(word => {
+                    const wordDiv = document.createElement('div');
+                    wordDiv.className = 'flex flex-nowrap gap-1.5 sm:gap-2';
+                    
+                    for (let char of word) {
+                        const tileContainer = document.createElement('div');
+                        tileContainer.className = 'tile-container w-8 h-10 sm:w-10 sm:h-12 md:w-12 md:h-14';
+                        tileContainer.dataset.letter = char.toUpperCase();
+                        const tileInner = document.createElement('div');
+                        tileInner.className = 'tile-inner';
+                        const frontFace = document.createElement('div');
+                        frontFace.className = 'tile-face tile-front';
+                        const backFace = document.createElement('div');
+                        backFace.className = 'tile-face tile-back text-xl sm:text-2xl md:text-3xl font-bold';
+                        backFace.textContent = char;
+                        tileInner.appendChild(frontFace);
+                        tileInner.appendChild(backFace);
+                        tileContainer.appendChild(tileInner);
+                        wordDiv.appendChild(tileContainer);
+                    }
+                    phraseContainer.appendChild(wordDiv);
+                });
+            }
+
+            function createKeyboard() {
+                keyboardContainer.innerHTML = '';
+                for (let letter of alphabet) {
+                    const button = document.createElement('button');
+                    button.className = 'keyboard-btn w-9 h-9 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-md text-base sm:text-lg transition-all duration-200';
+                    button.textContent = letter;
+                    button.dataset.letter = letter;
+                    button.addEventListener('click', () => handleGuess(letter, button));
+                    keyboardContainer.appendChild(button);
+                }
+            }
+
+            function handleGuess(letter, button) {
+                if (guessedLetters.has(letter)) return;
+                guessedLetters.add(letter);
+                button.disabled = true;
+
+                let isGuessCorrect = false;
+                const tiles = document.querySelectorAll(`.tile-container[data-letter='${letter}']`);
+                
+                if (tiles.length > 0) {
+                    isGuessCorrect = true;
+                    tiles.forEach(tile => {
+                        tile.classList.add('flipped');
+                        correctGuesses++;
+                    });
+                }
+                
+                button.classList.remove('bg-gray-200', 'hover:bg-gray-300');
+                if (isGuessCorrect) {
+                    button.classList.add('bg-green-500', 'text-white');
+                    showNotification(`Tìm thấy ${tiles.length} chữ "${letter}"!`);
+                } else {
+                    button.classList.add('bg-red-500', 'text-white');
+                    showNotification(`Không có chữ "${letter}" nào trong ô chữ.`);
+                }
+                checkWinCondition();
+            }
+
+            function handleKeyPress(e) {
+                const key = e.key.toUpperCase();
+                const keyMap = {'À': 'A', 'Á': 'A', 'Ả': 'A', 'Ã': 'A', 'Ạ': 'A', 'È': 'E', 'É': 'E', 'Ẻ': 'E', 'Ẽ': 'E', 'Ẹ': 'E'};
+                const normalizedKey = keyMap[key] || key;
+                
+                if (alphabet.includes(normalizedKey)) {
+                    const button = document.querySelector(`.keyboard-btn[data-letter='${normalizedKey}']`);
+                    if (button && !button.disabled) {
+                        handleGuess(normalizedKey, button);
+                    }
+                }
+            }
+            
+            function checkWinCondition() {
+                if (correctGuesses === totalLettersInPhrase) {
+                    setTimeout(() => {
+                         themeText.textContent = `Chủ đề: ${phraseWithAccents}`;
+                         themeText.classList.add('revealed');
+                         winModal.classList.remove('hidden');
+                    }, 800);
+                }
+            }
+
+            // --- GÁN CÁC SỰ KIỆN ---
+            resetButton.addEventListener('click', initializeGame);
+            modalResetButton.addEventListener('click', initializeGame);
+            
+            revealButton.addEventListener('click', () => {
+                themeText.textContent = `Chủ đề: ${phraseWithAccents}`;
+                themeText.classList.add('revealed');
+                revealButton.disabled = true;
+            });
+
+            toggleAllButton.addEventListener('click', () => {
+                areAllTilesShown = !areAllTilesShown;
+                const allTiles = document.querySelectorAll('.tile-container');
+
+                if (areAllTilesShown) {
+                    allTiles.forEach(tile => tile.classList.add('flipped'));
+                    toggleAllButton.textContent = 'Ẩn Ô Chữ';
+                } else {
+                    allTiles.forEach(tile => {
+                        const letter = tile.dataset.letter;
+                        if (!guessedLetters.has(letter)) {
+                            tile.classList.remove('flipped');
+                        }
+                    });
+                    toggleAllButton.textContent = 'Hiện Tất Cả';
+                }
+            });
+
+            window.addEventListener('keyup', handleKeyPress);
+
+            // --- BẮT ĐẦU TRÒ CHƠI ---
+            initializeGame();
+        });
+    </script>
+</body>
+</html>
