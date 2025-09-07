@@ -13,19 +13,29 @@
     <!-- Thêm favicon -->
     <link rel="icon" href="favicon.png" type="image/png">
     <style>
-        :root {
-            /* Tông màu sáng hơn cho nền */
-            --background-start: #93c5fd; /* blue-300 */
-            --background-end: #a78bfa; /* purple-400 */
-            --primary-color: #6366f1; /* indigo-500 */
-            --secondary-color: #f59e0b; /* amber-500 */
-            --tertiary-color: #10b981; /* emerald-500 */
-        }
         body {
             font-family: 'Quicksand', sans-serif;
-            background: linear-gradient(135deg, var(--background-start), var(--background-end));
-            overflow: hidden; /* Ngăn cuộn trang do các hiệu ứng bay lên */
+            /* Thiết lập ảnh nền */
+            background-image: url('nen.png');
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            overflow: hidden;
+            position: relative; /* Thêm position relative để lớp overlay hoạt động */
         }
+        
+        /* Lớp phủ mờ */
+        .backdrop-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            backdrop-filter: blur(5px);
+            z-index: -1;
+        }
+
+        /* Hiệu ứng bong bóng */
         #particle-bg {
             position: fixed;
             top: 0;
@@ -33,7 +43,7 @@
             width: 100%;
             height: 100%;
             pointer-events: none;
-            z-index: -1;
+            z-index: -2; /* Đảm bảo nằm dưới lớp overlay */
         }
         .bubble {
             position: absolute;
@@ -51,6 +61,7 @@
                 opacity: 0;
             }
         }
+        
         /* CSS tùy chỉnh cho hiệu ứng lật ô chữ 3D */
         .tile-container {
             perspective: 1000px;
@@ -78,7 +89,7 @@
             box-shadow: 0 4px 10px rgba(0,0,0,0.2);
         }
         .tile-front {
-            background: linear-gradient(45deg, var(--tertiary-color), #2dd4bf);
+            background: #f6ad55; /* yellow-500 */
         }
         .tile-back {
             background-color: #f3f4f6;
@@ -92,9 +103,9 @@
             transform: scale(0.95);
         }
         .keyboard-btn.guessed {
-            background: var(--tertiary-color);
+            background: #38a169; /* green-600 */
             color: #fff;
-            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+            box-shadow: 0 4px 6px rgba(56, 161, 105, 0.3);
         }
         .keyboard-btn.incorrect {
             background: #ef4444; /* red-500 */
@@ -124,14 +135,14 @@
         }
         #theme-text.revealed {
             font-weight: 700;
-            color: #1e40af; /* blue-800 */
+            color: #f6ad55; /* yellow-500 */
             transform: scale(1.05);
             font-size: 1.1rem;
         }
         /* Nút chung */
         .action-btn {
-            background: linear-gradient(90deg, #6366f1, #8b5cf6);
-            color: white;
+            background: #f6ad55; /* yellow-500 */
+            color: #fff;
             font-weight: bold;
             padding: 12px 24px;
             border-radius: 9999px;
@@ -144,20 +155,34 @@
         }
         .action-btn:focus {
             outline: none;
-            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 4px rgba(246, 173, 85, 0.5);
         }
         /* Điều chỉnh màu sắc riêng cho từng nút */
-        #toggle-all-button { background: linear-gradient(90deg, #10b981, #34d399); }
-        #toggle-all-button:focus { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.5); }
-        #reveal-button { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+        #toggle-all-button { background: #38a169; }
+        #toggle-all-button:focus { box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.5); }
+        #reveal-button { background: #f59e0b; }
         #reveal-button:focus { box-shadow: 0 0 0 4px rgba(245, 158, 11, 0.5); }
-        #reset-button { background: linear-gradient(90deg, #ef4444, #f87171); }
-        #reset-button:focus { box-shadow: 0 0 0 4px rgba(239, 68, 68, 0.5); }
-        #modal-reset-button { background: linear-gradient(90deg, #10b981, #34d399); }
-        #modal-reset-button:focus { box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.5); }
+        #reset-button { background: #c53030; }
+        #reset-button:focus { box-shadow: 0 0 0 4px rgba(197, 48, 48, 0.5); }
+        #modal-reset-button { background: #38a169; }
+        #modal-reset-button:focus { box-shadow: 0 0 0 4px rgba(56, 161, 105, 0.5); }
+        
+        /* Dòng bản quyền ở cuối trang */
+        .copyright {
+            position: fixed;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.8rem;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
+            z-index: 10;
+        }
     </style>
 </head>
-<body class="bg-gradient-to-br from-blue-300 to-purple-400 min-h-screen flex items-center justify-center p-2 sm:p-4">
+<body>
+    <!-- Lớp phủ mờ -->
+    <div class="backdrop-overlay"></div>
     <!-- Container cho các hạt bong bóng -->
     <div id="particle-bg"></div>
 
@@ -165,7 +190,8 @@
         <!-- Thêm logo -->
         <img src="logo.png" alt="Logo Thiếu Nhi Vĩnh Long" class="mx-auto mb-4 w-28 h-auto transform transition-transform hover:scale-105">
         <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold font-['Montserrat'] mb-2 text-gray-800">TRÒ CHƠI ĐOÁN Ô CHỮ</h1>
-        <p id="theme-text" class="text-gray-600 text-base mb-4 h-8 flex items-center justify-center">Chủ đề: (ẩn)</p>
+        <p id="theme-text" class="text-gray-600 text-base mb-2 h-8 flex items-center justify-center">Chủ đề: (ẩn)</p>
+        <p id="total-letters-text" class="text-gray-600 text-base mb-4 h-8 flex items-center justify-center"></p>
         
         <!-- Khu vực thông báo số chữ cái tìm thấy -->
         <div id="notification-area" class="h-8 text-lg font-semibold text-blue-700 mb-4 opacity-0"></div>
@@ -206,6 +232,9 @@
             </div>
         </div>
     </div>
+    
+    <!-- Dòng bản quyền -->
+    <div class="copyright">Bản quyền thuộc về leminhdang.com</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -221,6 +250,7 @@
             const winModal = document.getElementById('win-modal');
             const modalResetButton = document.getElementById('modal-reset-button');
             const themeText = document.getElementById('theme-text');
+            const totalLettersText = document.getElementById('total-letters-text');
             const notificationArea = document.getElementById('notification-area');
             const revealButton = document.getElementById('reveal-button');
             const toggleAllButton = document.getElementById('toggle-all-button');
@@ -257,6 +287,7 @@
                 winModal.classList.add('hidden');
                 themeText.textContent = 'Chủ đề: (ẩn)';
                 themeText.classList.remove('revealed');
+                totalLettersText.textContent = `Tổng số chữ cái: ${totalLettersInPhrase}`;
                 notificationArea.textContent = '';
                 notificationArea.style.opacity = 0;
                 
